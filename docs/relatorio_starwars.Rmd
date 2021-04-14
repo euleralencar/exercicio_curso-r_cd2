@@ -1,0 +1,146 @@
+---
+title: "relatorio_starwars"
+author: "euler"
+date: "4/14/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo do Exercício
+
+Faça um mini relatório com um gráfico mostrando a frequência das espécies dos personagens do Star Wars. Use a base “starwars” do pacote dplyr. Faça isso seguindo o modelo de organização de projetos visto na primeira aula. 
+
+Esse exercício faz parte do curso **Ciência de Dados 2**, veja em <https://curso-r.github.io/202104-r4ds-2/>
+
+Vamos precisar dos pacotes:
+```{r pipe}
+# Definindo o PIPE
+`%>%` <- magrittr::`%>%`
+```
+
+```{r carregar_pacotes, results='hide'}
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+```
+
+### Base de dados
+
+A base de dados vem com o pacote `dplyr` 
+
+```{r ver_base}
+data <- dplyr::starwars
+dplyr::glimpse(data)
+```
+
+### Frequência de espécies
+
+Queremos saber a quantidade de espécies diferentes no universo Star Wars. 
+```{r }
+data %>%
+  dplyr::mutate(
+    species = dplyr::if_else(is.na(species),"?Desconhecida?", species)
+  ) %>%
+  dplyr::summarise(esp_dif = dplyr::n_distinct(species))
+```
+Há 38 espécies diferentes no universo Star Wars, até sair o próximo filme, pelo menos. A distribuição das espécies é a seguinte:
+
+```{r }
+data %>%
+  dplyr::mutate(
+    species = dplyr::if_else(is.na(species),"?Desconhecida?",species)
+  ) %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarise(qtd = n()) %>%
+  dplyr::mutate(perc = round(qtd / sum(qtd),2)) %>%
+  dplyr::arrange(desc(qtd)) %>%
+  kableExtra::kbl() %>%
+  kableExtra::kable_styling()
+```
+
+Ou seja, 40% dos personagens são humanos. 7% são droids.
+
+
+O código abaixo pretende buscar as 6 espécies mais comuns no universo Star Wars
+```{r }
+data %>%
+  dplyr::mutate(
+    species = dplyr::if_else(is.na(species),"?Desconhecida?",species)
+  ) %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarise(qtd = dplyr::n()) %>%
+  dplyr::mutate(perc = round(qtd / sum(qtd),2)) %>%
+  dplyr::arrange(desc(qtd)) %>%
+  dplyr::slice_max(qtd, n=6) %>%
+  kableExtra::kbl() %>%
+  kableExtra::kable_styling()
+```
+
+### Criando tema para o ggplot2
+
+Esse tema foi inspirado no trabalho do colega Alan Panosso (ver em <https://arpanosso.github.io/RSC2_Licao_01/>). Buscou-se usar tema semelhante ao Star Wars para criar os gráficos.
+
+```{r meu_tema, cache=TRUE}
+meu_tema_starwars <- function(){
+#  fontTable = fonttable()
+  
+  ggplot2::theme(
+    text = ggplot2::element_text(
+      colour = "yellow",
+      family = "Comic Sans MS Bold",
+      size = 16
+    ),
+    plot.title = ggplot2::element_text(
+      family = "Impact",
+      hjust = 0.5,
+      size = 30,
+      colour = "orange",
+    ),
+    plot.subtitle = ggplot2::element_text(
+      hjust = 0.5,
+      size = 15,
+      colour = "white",
+    ),
+    axis.text = ggplot2::element_text(color = "white",size=rel(.5)),
+    axis.ticks.x = ggplot2::element_line(color = "white"),
+    panel.background = ggplot2::element_rect(fill = "black"),
+    panel.grid.major.y = ggplot2::element_line(size = 0.1,color="white"),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    plot.background = ggplot2::element_rect(fill = "black", color = "black"),
+    legend.position = "bottom",
+    legend.background = ggplot2::element_rect(fill = "black", color = "black"),
+  )
+}
+```
+
+Usando este tema temos o seguinte gráfico
+
+```{r pressure, echo=FALSE}
+library(ggplot2)
+data %>%
+  dplyr::mutate(
+    species = dplyr::if_else(is.na(species),"?Desconhecida?",species)
+  ) %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarise(qtd = dplyr::n()) %>%
+  dplyr::arrange(desc(qtd)) %>%
+  dplyr::slice_max(qtd, n=6) %>%
+  ggplot2::ggplot(aes(x=reorder(species, -qtd), y=qtd, fill=as.factor(species),show.legend = FALSE)) +
+    geom_col()+
+    labs(title="Espécies mais frequentes",
+         x="Espécies",
+         y="Quantidade",
+         fill="") +
+    meu_tema_starwars() +
+    theme(legend.position = "none", axis.text = element_text(angle=45))
+```
+
+## Conclusão
+A grande maioria dos personagens são humanos, afinal é uma história criada por humanos para humanos. O restante das espécies se distribuiem de forma uniforme aproximadamente.
+
